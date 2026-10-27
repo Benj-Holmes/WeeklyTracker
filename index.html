@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0e13">
+<title>Week</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icon.svg">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="A local weekly habit tracker: today, this week, and everything so far.">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="top-left">
+    <div class="date" id="topDate">&mdash;</div>
+    <div class="sub" id="topSub">&mdash;</div>
+  </div>
+  <div class="top-right">
+    <div class="pill" id="topStreak">&#128293; 0</div>
+    <button class="icon" id="settingsBtn" data-act="open-settings" aria-label="Settings">&#9881;</button>
+  </div>
+</header>
+
+<main id="main"></main>
+
+<nav class="nav" id="nav">
+  <button data-act="tab" data-tab="today" class="on">Today</button>
+  <button data-act="tab" data-tab="week">Week</button>
+  <button data-act="tab" data-tab="health">Health</button>
+  <button data-act="tab" data-tab="totals">Totals</button>
+</nav>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<!-- ===================== SETTINGS ===================== -->
+<dialog id="settingsDlg" class="dlg">
+  <div class="dlgHead">
+    <h2>Settings</h2>
+    <button class="icon" data-act="close-settings" aria-label="Close">&#10005;</button>
+  </div>
+
+  <div class="dlgBody">
+    <section class="grp">
+      <h3>Calories</h3>
+      <label class="field"><span>TDEE</span><input id="sTdee" type="number" inputmode="numeric" step="10" min="0"></label>
+      <label class="field"><span>Daily goal</span><input id="sCalGoal" type="number" inputmode="numeric" step="10" min="0"></label>
+      <p class="hint" id="sCutHint"></p>
+    </section>
+
+    <section class="grp">
+      <h3>Fasting</h3>
+      <label class="field"><span>Stop eating</span><input id="sFastStart" type="time"></label>
+      <label class="field"><span>Eat again</span><input id="sFastEnd" type="time"></label>
+      <p class="hint" id="sFastHint"></p>
+    </section>
+
+    <section class="grp">
+      <h3>Work</h3>
+      <label class="field"><span>Daily goal (min)</span><input id="sWorkDaily" type="number" inputmode="numeric" step="15" min="0"></label>
+      <label class="field"><span>Weekly goal (min)</span><input id="sWorkWeekly" type="number" inputmode="numeric" step="15" min="0"></label>
+      <label class="field"><span>Start work by</span><input id="sStartBy" type="time"></label>
+    </section>
+
+    <section class="grp">
+      <h3>Weigh-in</h3>
+      <label class="field"><span>Day</span>
+        <select id="sWeighDay">
+          <option value="0">Sunday</option>
+          <option value="1">Monday</option>
+          <option value="2">Tuesday</option>
+          <option value="3">Wednesday</option>
+          <option value="4">Thursday</option>
+          <option value="5">Friday</option>
+          <option value="6">Saturday</option>
+        </select>
+      </label>
+      <label class="field"><span>Time</span><input id="sWeighTime" type="time"></label>
+    </section>
+
+    <section class="grp">
+      <h3>Day</h3>
+      <label class="field"><span>Lock-in time</span><input id="sLockTime" type="time"></label>
+      <div class="btnrow">
+        <button class="btn ghost" data-act="toggle-off" id="btnOff">Day off</button>
+        <button class="btn ghost" data-act="toggle-drought" id="btnDrought">Work drought</button>
+      </div>
+      <div class="btnrow">
+        <button class="btn ghost" data-act="lock-today" id="btnLock">Lock today</button>
+      </div>
+      <p class="hint">Day off pauses everything. Work drought exempts work + "start by" only. Both apply to today and are reversible until the day locks.</p>
+    </section>
+
+    <section class="grp">
+      <h3>Tasks</h3>
+      <div id="taskList" class="tasklist"></div>
+      <button class="btn ghost full" data-act="task-add">+ Add task</button>
+    </section>
+
+    <section class="grp">
+      <h3>Data</h3>
+      <div class="btnrow">
+        <button class="btn ghost" data-act="export">Export</button>
+        <button class="btn ghost" data-act="import">Import</button>
+        <button class="btn danger" data-act="reset">Reset all</button>
+      </div>
+      <input id="importFile" type="file" accept="application/json,.json" hidden>
+      <p class="hint">Everything is stored on this device only. Export a backup before clearing browser data.</p>
+    </section>
+  </div>
+</dialog>
+
+<!-- ===================== TASK EDITOR ===================== -->
+<dialog id="taskDlg" class="dlg small">
+  <div class="dlgHead">
+    <h2 id="taskDlgTitle">Task</h2>
+    <button class="icon" data-act="close-task" aria-label="Close">&#10005;</button>
+  </div>
+  <div class="dlgBody">
+    <label class="field"><span>Name</span><input id="tName" type="text" maxlength="40"></label>
+    <label class="field"><span>Emoji</span><input id="tEmoji" type="text" maxlength="4"></label>
+    <label class="field"><span>Per week</span><input id="tTarget" type="number" inputmode="numeric" min="1" max="99"></label>
+    <label class="field"><span>Per day (max)</span><input id="tMaxDay" type="number" inputmode="numeric" min="1" max="9"></label>
+    <label class="check"><input id="tDaily" type="checkbox"> <span>Show on the Today page (daily task)</span></label>
+    <label class="check"><input id="tWork" type="checkbox"> <span>Counts as work (exempt on drought days)</span></label>
+    <div class="btnrow">
+      <button class="btn" data-act="task-save">Save</button>
+      <button class="btn danger" data-act="task-del">Delete</button>
+    </div>
+    <p class="hint">Per week = 7 &times; per day makes it an every-day task. Anything lower is a weekly quota.</p>
+  </div>
+</dialog>
+
+<script src="./app.js"></script>
+</body>
+</html>
